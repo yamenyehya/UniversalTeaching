@@ -52,7 +52,7 @@ export class UserController {
   }
 
   // Bulk Import (for Python Excel importer)
-  static async bulkImport(req: Request, res: Response) {
+  static async bulkImport(req: AuthenticatedRequest, res: Response) {
     try {
       const { schoolId, names, role, grade, subject } = req.body;
 
@@ -64,6 +64,11 @@ export class UserController {
 
       if (!["admin", "teacher", "student", "coordinator"].includes(role)) {
         return res.status(400).json({ error: "Invalid role specified for bulk import." });
+      }
+
+      // Restrict to the platform owner or an admin of this specific school
+      if (req.user?.role !== "owner" && (req.user?.role !== "admin" || req.user?.schoolId !== schoolId)) {
+        return res.status(403).json({ error: "Access denied. You cannot import users into this school." });
       }
 
       const result = await UserService.bulkImportUsers(schoolId, names, role, { grade, subject });
@@ -106,8 +111,8 @@ export class UserController {
         return res.status(404).json({ error: `User with ID '${userId}' not found.` });
       }
 
-      // Allow same-school members, administrators, or platform owner
-      if (req.user?.role !== "owner" && req.user?.role !== "admin" && req.user?.schoolId !== user.schoolId) {
+      // Allow same-school members (any role) or platform owner
+      if (req.user?.role !== "owner" && req.user?.schoolId !== user.schoolId) {
         return res.status(403).json({ error: "Access denied. School data isolated." });
       }
 
@@ -128,16 +133,20 @@ export class UserController {
         return res.status(404).json({ error: "User not found." });
       }
 
-      // Only allow owner, admins or self-update
-      if (req.user?.role !== "owner" && req.user?.role !== "admin" && req.user?.userId !== userId) {
+      const isOwner = req.user?.role === "owner";
+      const isSameSchoolAdmin = req.user?.role === "admin" && req.user?.schoolId === user.schoolId;
+      const isSelf = req.user?.userId === userId;
+
+      // Only allow owner, the user's own school admin, or self-update
+      if (!isOwner && !isSameSchoolAdmin && !isSelf) {
         return res.status(403).json({ error: "Access denied. You cannot modify this user." });
       }
 
-      // Prevent role escalation unless owner or admin
-      if (data.role && req.user?.role !== "owner" && req.user?.role !== "admin") {
+      // Prevent role escalation unless owner or the user's own school admin
+      if (data.role && !isOwner && !isSameSchoolAdmin) {
         delete data.role;
       }
-      if (data.permissions && req.user?.role !== "owner" && req.user?.role !== "admin") {
+      if (data.permissions && !isOwner && !isSameSchoolAdmin) {
         delete data.permissions;
       }
 
@@ -161,8 +170,12 @@ export class UserController {
         return res.status(404).json({ error: "User not found." });
       }
 
-      // Restrict to owner, admins or the user themselves (account self-deletion)
-      if (req.user?.role !== "owner" && req.user?.role !== "admin" && req.user?.userId !== userId) {
+      const isOwner = req.user?.role === "owner";
+      const isSameSchoolAdmin = req.user?.role === "admin" && req.user?.schoolId === user.schoolId;
+      const isSelf = req.user?.userId === userId;
+
+      // Restrict to owner, the user's own school admin, or the user themselves (self-deletion)
+      if (!isOwner && !isSameSchoolAdmin && !isSelf) {
         return res.status(403).json({ error: "Access denied. Admin permissions required to delete." });
       }
 
@@ -197,8 +210,11 @@ export class UserController {
           return res.status(404).json({ error: "User not found." });
         }
 
-        // Restrict to superadmin or self
-        if (req.user?.role !== "admin" && req.user?.userId !== userId) {
+        // Restrict to owner, the user's own school admin, or self
+        const isOwner = req.user?.role === "owner";
+        const isSameSchoolAdmin = req.user?.role === "admin" && req.user?.schoolId === user.schoolId;
+        const isSelf = req.user?.userId === userId;
+        if (!isOwner && !isSameSchoolAdmin && !isSelf) {
           if (req.file && req.file.path) fs.unlinkSync(req.file.path);
           return res.status(403).json({ error: "Access denied. Cannot modify other users' profiles." });
         }
@@ -238,8 +254,11 @@ export class UserController {
         return res.status(404).json({ error: "User not found." });
       }
 
-      // Restrict to admins or self
-      if (req.user?.role !== "admin" && req.user?.userId !== userId) {
+      // Restrict to owner, the user's own school admin, or self
+      const isOwner = req.user?.role === "owner";
+      const isSameSchoolAdmin = req.user?.role === "admin" && req.user?.schoolId === user.schoolId;
+      const isSelf = req.user?.userId === userId;
+      if (!isOwner && !isSameSchoolAdmin && !isSelf) {
         return res.status(403).json({ error: "Access denied. Cannot modify other users' profiles." });
       }
 

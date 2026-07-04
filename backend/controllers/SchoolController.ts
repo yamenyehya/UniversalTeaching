@@ -5,30 +5,17 @@ import { FileService } from "../services/FileService.ts";
 import { AuthenticatedRequest } from "../middleware/authMiddleware.ts";
 
 export class SchoolController {
-  static async createSchool(req: AuthenticatedRequest, res: Response) {
-    try {
-      const { schoolId, schoolName, settings } = req.body;
-
-      if (!schoolId || !schoolName) {
-        return res.status(400).json({ error: "SchoolId and schoolName are required fields." });
-      }
-
-      const school = await SchoolService.createSchool(schoolId, schoolName, settings);
-      return res.status(201).json({
-        message: "School onboarded successfully",
-        school,
-      });
-    } catch (err) {
-      return res.status(400).json({ error: (err as Error).message });
-    }
-  }
+  // NOTE: School creation is an Owner-only capability and lives exclusively
+  // at POST /owner/schools (see OwnerController.createSchool). There is
+  // deliberately no school-creation endpoint here to avoid a second,
+  // less-restricted entry point into the same operation.
 
   static async getSchoolById(req: AuthenticatedRequest, res: Response) {
     try {
       const { schoolId } = req.params;
 
-      // Restrict cross-tenant leaks (unless user is superadmin, let's verify if they belong to this school)
-      if (req.user?.role !== "owner" && req.user?.role !== "admin" && req.user?.schoolId !== schoolId) {
+      // Restrict cross-tenant leaks: any member of this school, or the platform owner
+      if (req.user?.role !== "owner" && req.user?.schoolId !== schoolId) {
         return res.status(403).json({ error: "Access denied. You do not belong to this school." });
       }
 

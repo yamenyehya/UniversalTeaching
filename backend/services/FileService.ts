@@ -1,11 +1,5 @@
 import FileModel from "../models/File.ts";
-import { isUsingMongo, readLocalJSON, writeLocalJSON } from "./db.ts";
 import { SchoolService } from "./SchoolService.ts";
-import { UserService } from "./UserService.ts";
-import path from "path";
-
-const DATA_DIR = path.join(process.cwd(), "backend", "data");
-const FILES_FILE = path.join(DATA_DIR, "files.json");
 
 export class FileService {
   // Checks if a user has permission to access or modify a file
@@ -24,7 +18,7 @@ export class FileService {
       return false;
     }
 
-    // 2. Admin role has absolute access
+    // 2. Admin role has full access, but only within their own school
     if (user.role === "admin") {
       return true;
     }
@@ -114,7 +108,7 @@ export class FileService {
       throw new Error(`School with ID '${fileData.schoolId}' does not exist.`);
     }
 
-    const fileId = "f_" + Math.random().toString(36).substr(2, 9);
+    const fileId = "f_" + Math.random().toString(36).substring(2, 11);
     const finalPermissions = {
       isPublicGlobal: fileData.permissions?.isPublicGlobal ?? false,
       allowedRoles: fileData.permissions?.allowedRoles ?? ["student", "teacher", "coordinator", "admin"],
@@ -122,111 +116,45 @@ export class FileService {
       allowedSubjects: fileData.permissions?.allowedSubjects ?? (fileData.subject ? [fileData.subject] : []),
     };
 
-    if (isUsingMongo()) {
-      return await (FileModel as any).create({
-        fileId,
-        schoolId: fileData.schoolId,
-        uploadedBy: fileData.uploadedBy,
-        teacherId: fileData.teacherId,
-        title: fileData.title,
-        description: fileData.description || "",
-        fileType: fileData.fileType.toLowerCase(),
-        fileUrl: fileData.fileUrl,
-        size: fileData.size || 0,
-        grade: fileData.grade,
-        subject: fileData.subject,
-        category: fileData.category || "resource",
-        permissions: finalPermissions,
-      });
-    } else {
-      const files = readLocalJSON(FILES_FILE);
-      const newFile = {
-        fileId,
-        schoolId: fileData.schoolId,
-        uploadedBy: fileData.uploadedBy,
-        teacherId: fileData.teacherId,
-        title: fileData.title,
-        description: fileData.description || "",
-        fileType: fileData.fileType.toLowerCase(),
-        fileUrl: fileData.fileUrl,
-        size: fileData.size || 0,
-        grade: fileData.grade,
-        subject: fileData.subject,
-        category: fileData.category || "resource",
-        permissions: finalPermissions,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      files.push(newFile);
-      writeLocalJSON(FILES_FILE, files);
-      return newFile;
-    }
+    return await (FileModel as any).create({
+      fileId,
+      schoolId: fileData.schoolId,
+      uploadedBy: fileData.uploadedBy,
+      teacherId: fileData.teacherId,
+      title: fileData.title,
+      description: fileData.description || "",
+      fileType: fileData.fileType.toLowerCase(),
+      fileUrl: fileData.fileUrl,
+      size: fileData.size || 0,
+      grade: fileData.grade,
+      subject: fileData.subject,
+      category: fileData.category || "resource",
+      permissions: finalPermissions,
+    });
   }
 
   static async getFileById(fileId: string) {
-    if (isUsingMongo()) {
-      return await (FileModel as any).findOne({ fileId });
-    } else {
-      const files = readLocalJSON(FILES_FILE);
-      return files.find((f) => f.fileId === fileId) || null;
-    }
+    return await (FileModel as any).findOne({ fileId });
   }
 
   static async getAllFiles() {
-    if (isUsingMongo()) {
-      return await (FileModel as any).find({});
-    } else {
-      return readLocalJSON(FILES_FILE);
-    }
+    return await (FileModel as any).find({});
   }
 
   static async getFilesBySchool(schoolId: string) {
-    if (isUsingMongo()) {
-      return await (FileModel as any).find({ schoolId });
-    } else {
-      const files = readLocalJSON(FILES_FILE);
-      return files.filter((f) => f.schoolId === schoolId);
-    }
+    return await (FileModel as any).find({ schoolId });
   }
 
   static async getFilesByTeacher(teacherId: string) {
-    if (isUsingMongo()) {
-      return await (FileModel as any).find({ teacherId });
-    } else {
-      const files = readLocalJSON(FILES_FILE);
-      return files.filter((f) => f.teacherId === teacherId);
-    }
+    return await (FileModel as any).find({ teacherId });
   }
 
   static async updateFile(fileId: string, data: Partial<any>) {
-    if (isUsingMongo()) {
-      return await (FileModel as any).findOneAndUpdate({ fileId }, { $set: data }, { new: true });
-    } else {
-      const files = readLocalJSON(FILES_FILE);
-      const index = files.findIndex((f) => f.fileId === fileId);
-      if (index === -1) return null;
-
-      files[index] = {
-        ...files[index],
-        ...data,
-        updatedAt: new Date().toISOString(),
-      };
-      writeLocalJSON(FILES_FILE, files);
-      return files[index];
-    }
+    return await (FileModel as any).findOneAndUpdate({ fileId }, { $set: data }, { new: true });
   }
 
   static async deleteFile(fileId: string) {
-    if (isUsingMongo()) {
-      const result = await (FileModel as any).deleteOne({ fileId });
-      return result.deletedCount > 0;
-    } else {
-      const files = readLocalJSON(FILES_FILE);
-      const originalLength = files.length;
-      const filtered = files.filter((f) => f.fileId !== fileId);
-      writeLocalJSON(FILES_FILE, filtered);
-      return filtered.length < originalLength;
-    }
+    const result = await (FileModel as any).deleteOne({ fileId });
+    return result.deletedCount > 0;
   }
 }

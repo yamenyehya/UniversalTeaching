@@ -637,52 +637,15 @@ export default function App() {
   };
 
   // AI-Assisted Bulk Excel/Unstructured User Importer
+  // NOTE: This previously called a Gemini-backed endpoint that has been
+  // removed. The importer is being rebuilt as a deterministic (non-AI)
+  // spreadsheet parser in a later pass. Disabled for now rather than
+  // silently failing against a dead endpoint.
   const handleAIParsedImport = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBulkImportResult(null);
-    setBulkImportError(null);
-    setAiImportResult(null);
-    setIsAILoading(true);
-
-    if (!bulkSchoolId || !bulkNamesText.trim()) {
-      setBulkImportError("Please specify the target school and provide raw spreadsheet or text data.");
-      setIsAILoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/owner/ai-parse-import", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`
-        },
-        body: JSON.stringify({
-          schoolId: bulkSchoolId,
-          defaultRole: bulkRole,
-          defaultGrade: bulkGrade || undefined,
-          defaultSubject: bulkSubject || undefined,
-          rawContent: bulkNamesText
-        })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        setAiImportResult(data.imported);
-        setBulkNamesText("");
-        if (data.errors && data.errors.length > 0) {
-          setBulkImportError(`Completed with some errors: ${data.errors.join("; ")}`);
-        }
-        showNotification("success", `Successfully parsed & onboarded ${data.imported.length} portfolios.`);
-        fetchData();
-      } else {
-        setBulkImportError(data.error || "AI import failed.");
-      }
-    } catch (err) {
-      setBulkImportError("Failed to connect to the backend server.");
-    } finally {
-      setIsAILoading(false);
-    }
+    setBulkImportError(
+      "The AI-assisted importer is temporarily unavailable while it's rebuilt as a direct spreadsheet parser. Use the manual bulk-import form above in the meantime."
+    );
   };
 
   // CSV Generator and Downloader for Processed Spreadsheet Accounts
@@ -2430,12 +2393,12 @@ export default function App() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full">SaaS Utility</span>
-                      <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full flex items-center gap-1">
-                        <Sparkles className="h-3 w-3" /> Gemini AI Assisted
+                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" /> Rebuilding
                       </span>
                     </div>
                     <h2 className="text-2xl font-extrabold tracking-tight mt-2 text-white">AI-Assisted Multi-Tenant Spreadsheet Importer</h2>
-                    <p className="text-xs text-indigo-100/70 mt-1 max-w-2xl">Onboard students, teachers, and staff instantly. Upload spreadsheet files (.csv, .xlsx, .txt) or drop them below. Gemini AI extracts names, emails, grades, and subjects, generates unique usernames, secure default passwords, and registers them automatically.</p>
+                    <p className="text-xs text-indigo-100/70 mt-1 max-w-2xl">Onboard students, teachers, and staff instantly. Upload spreadsheet files (.csv, .xlsx, .txt) or drop them below. The parser extracts names, emails, grades, and subjects, generates unique usernames and secure default passwords, and registers them automatically.</p>
                   </div>
                 </div>
 
@@ -2599,7 +2562,7 @@ export default function App() {
                       {isAILoading && (
                         <div className="text-center py-20 text-slate-500 flex flex-col items-center justify-center gap-3">
                           <RefreshCw className="h-10 w-10 text-indigo-600 animate-spin" />
-                          <p className="text-xs font-bold">Contacting Gemini AI Engine to parse, validate and map spreadsheet accounts...</p>
+                          <p className="text-xs font-bold">Parsing, validating and mapping spreadsheet accounts...</p>
                           <p className="text-[10px] text-slate-400 max-w-sm">Please hold on while we run cross-tenant validation rules and generate secure default passwords for all academic portfolios.</p>
                         </div>
                       )}

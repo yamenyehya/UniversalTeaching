@@ -8,16 +8,15 @@ const router = Router();
 // Only authenticated users can look up schools
 router.use(authMiddleware);
 
-// POST /schools - Onboard a new school (Admins only)
-router.post("/", roleMiddleware(["admin"]), SchoolController.createSchool);
+// School creation is Owner-only and lives at POST /owner/schools.
 
-// GET /schools/:schoolId - Get a school's settings/info (Admins/Teachers/Students/Coordinators belonging to this school)
+// GET /schools/:schoolId - Get a school's settings/info (any member of that school, or the Owner)
 router.get("/:schoolId", SchoolController.getSchoolById);
 
 // GET /schools/:schoolId/analytics - Get secure multi-tenant analytics for a school (Admins/Owner only)
 router.get("/:schoolId/analytics", SchoolController.getSchoolAnalytics);
 
-// GET /schools - Get list of schools
-router.get("/", SchoolController.getAllSchools);
+// GET /schools - Global list of every school (Owner only — this is platform-wide data, not tenant data)
+router.get("/", roleMiddleware(["owner"]), SchoolController.getAllSchools);
 
 export default router;

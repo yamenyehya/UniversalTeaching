@@ -26,7 +26,7 @@ export const authMiddleware = async (req: AuthenticatedRequest, res: Response, n
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "PLATFORM_SUPER_SECRET_JWT_KEY") as {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
       userId: string;
       role: string;
     };

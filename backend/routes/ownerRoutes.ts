@@ -31,6 +31,6 @@ router.delete("/files/:fileId", OwnerController.deleteFile);
 
 // 5. Bulk User Import
 router.post("/bulk-import", OwnerController.bulkImport);
-router.post("/ai-parse-import", OwnerController.aiParseImport);
+// NOTE: the previous Gemini-powered /ai-parse-import route has been removed.
 
 export default router;

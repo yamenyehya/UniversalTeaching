@@ -1,11 +1,6 @@
 import UserModel, { IPermissions } from "../models/User.ts";
-import { isUsingMongo, readLocalJSON, writeLocalJSON } from "./db.ts";
 import { SchoolService } from "./SchoolService.ts";
 import bcrypt from "bcryptjs";
-import path from "path";
-
-const DATA_DIR = path.join(process.cwd(), "backend", "data");
-const USERS_FILE = path.join(DATA_DIR, "users.json");
 
 export class UserService {
   // Helper to generate a default password hash
@@ -64,8 +59,7 @@ export class UserService {
   // Generates a unique username and email from a name
   static async generateUniqueUsernameAndEmail(
     name: string,
-    schoolId: string,
-    existingUsers: any[] = []
+    schoolId: string
   ): Promise<{ username: string; email: string }> {
     // Sanitize name to lowercase alphanumeric
     let baseUsername = name
@@ -79,35 +73,16 @@ export class UserService {
     let username = baseUsername;
     let counter = 1;
 
-    const usernameExists = async (u: string) => {
-      if (isUsingMongo()) {
-        const count = await (UserModel as any).countDocuments({ username: u });
-        return count > 0;
-      } else {
-        return existingUsers.some((user) => user.username === u);
-      }
-    };
-
-    while (await usernameExists(username)) {
+    while (await (UserModel as any).countDocuments({ username })) {
       username = `${baseUsername}${counter}`;
       counter++;
     }
 
     // Generate unique email
-    let baseEmail = `${username}@${schoolId}.edu`;
-    let email = baseEmail;
+    let email = `${username}@${schoolId}.edu`;
     counter = 1;
 
-    const emailExists = async (e: string) => {
-      if (isUsingMongo()) {
-        const count = await (UserModel as any).countDocuments({ email: e });
-        return count > 0;
-      } else {
-        return existingUsers.some((user) => user.email === e);
-      }
-    };
-
-    while (await emailExists(email)) {
+    while (await (UserModel as any).countDocuments({ email })) {
       email = `${username}${counter}@${schoolId}.edu`;
       counter++;
     }
@@ -138,80 +113,39 @@ export class UserService {
     let finalUsername = userData.username;
     let finalEmail = userData.email;
 
-    if (isUsingMongo()) {
-      if (!finalUsername || !finalEmail) {
-        const generated = await this.generateUniqueUsernameAndEmail(userData.name, userData.schoolId);
-        if (!finalUsername) finalUsername = generated.username;
-        if (!finalEmail) finalEmail = generated.email;
-      }
-
-      // Check duplicates
-      const dupeUser = await (UserModel as any).findOne({
-        $or: [{ username: finalUsername }, { email: finalEmail }],
-      });
-      if (dupeUser) {
-        throw new Error("A user with this username or email already exists in MongoDB.");
-      }
-
-      const userId = "u_" + Math.random().toString(36).substr(2, 9);
-      const permissions = this.getDefaultPermissions(userData.role, {
-        grade: userData.grade,
-        subject: userData.subject,
-      });
-
-      return await (UserModel as any).create({
-        userId,
-        schoolId: userData.schoolId,
-        role: userData.role,
-        name: userData.name,
-        username: finalUsername,
-        email: finalEmail,
-        passwordHash,
-        profileImage: userData.profileImage || "/public/defaults/dpfp.png",
-        grade: userData.grade,
-        subject: userData.subject,
-        permissions,
-      });
-    } else {
-      // JSON storage
-      const users = readLocalJSON(USERS_FILE);
-
-      if (!finalUsername || !finalEmail) {
-        const generated = await this.generateUniqueUsernameAndEmail(userData.name, userData.schoolId, users);
-        if (!finalUsername) finalUsername = generated.username;
-        if (!finalEmail) finalEmail = generated.email;
-      }
-
-      if (users.some((u) => u.username === finalUsername || u.email === finalEmail)) {
-        throw new Error("A user with this username or email already exists in Local Store.");
-      }
-
-      const userId = "u_" + Math.random().toString(36).substr(2, 9);
-      const permissions = this.getDefaultPermissions(userData.role, {
-        grade: userData.grade,
-        subject: userData.subject,
-      });
-
-      const newUser = {
-        userId,
-        schoolId: userData.schoolId,
-        role: userData.role,
-        name: userData.name,
-        username: finalUsername,
-        email: finalEmail,
-        passwordHash,
-        profileImage: userData.profileImage || "/public/defaults/dpfp.png",
-        grade: userData.grade,
-        subject: userData.subject,
-        permissions,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      users.push(newUser);
-      writeLocalJSON(USERS_FILE, users);
-      return newUser;
+    if (!finalUsername || !finalEmail) {
+      const generated = await this.generateUniqueUsernameAndEmail(userData.name, userData.schoolId);
+      if (!finalUsername) finalUsername = generated.username;
+      if (!finalEmail) finalEmail = generated.email;
     }
+
+    // Check duplicates
+    const dupeUser = await (UserModel as any).findOne({
+      $or: [{ username: finalUsername }, { email: finalEmail }],
+    });
+    if (dupeUser) {
+      throw new Error("A user with this username or email already exists.");
+    }
+
+    const userId = "u_" + Math.random().toString(36).substring(2, 11);
+    const permissions = this.getDefaultPermissions(userData.role, {
+      grade: userData.grade,
+      subject: userData.subject,
+    });
+
+    return await (UserModel as any).create({
+      userId,
+      schoolId: userData.schoolId,
+      role: userData.role,
+      name: userData.name,
+      username: finalUsername,
+      email: finalEmail,
+      passwordHash,
+      profileImage: userData.profileImage || "/public/defaults/dpfp.png",
+      grade: userData.grade,
+      subject: userData.subject,
+      permissions,
+    });
   }
 
   static async bulkImportUsers(
@@ -253,68 +187,27 @@ export class UserService {
   }
 
   static async getUserById(userId: string) {
-    if (isUsingMongo()) {
-      return await (UserModel as any).findOne({ userId });
-    } else {
-      const users = readLocalJSON(USERS_FILE);
-      return users.find((u) => u.userId === userId) || null;
-    }
+    return await (UserModel as any).findOne({ userId });
   }
 
   static async getUserByUsername(username: string) {
-    if (isUsingMongo()) {
-      return await (UserModel as any).findOne({ username });
-    } else {
-      const users = readLocalJSON(USERS_FILE);
-      return users.find((u) => u.username === username) || null;
-    }
+    return await (UserModel as any).findOne({ username });
   }
 
   static async getAllUsers() {
-    if (isUsingMongo()) {
-      return await (UserModel as any).find({});
-    } else {
-      return readLocalJSON(USERS_FILE);
-    }
+    return await (UserModel as any).find({});
   }
 
   static async getUsersBySchool(schoolId: string) {
-    if (isUsingMongo()) {
-      return await (UserModel as any).find({ schoolId });
-    } else {
-      const users = readLocalJSON(USERS_FILE);
-      return users.filter((u) => u.schoolId === schoolId);
-    }
+    return await (UserModel as any).find({ schoolId });
   }
 
   static async updateUser(userId: string, data: Partial<any>) {
-    if (isUsingMongo()) {
-      return await (UserModel as any).findOneAndUpdate({ userId }, { $set: data }, { new: true });
-    } else {
-      const users = readLocalJSON(USERS_FILE);
-      const index = users.findIndex((u) => u.userId === userId);
-      if (index === -1) return null;
-
-      users[index] = {
-        ...users[index],
-        ...data,
-        updatedAt: new Date().toISOString(),
-      };
-      writeLocalJSON(USERS_FILE, users);
-      return users[index];
-    }
+    return await (UserModel as any).findOneAndUpdate({ userId }, { $set: data }, { new: true });
   }
 
   static async deleteUser(userId: string) {
-    if (isUsingMongo()) {
-      const result = await (UserModel as any).deleteOne({ userId });
-      return result.deletedCount > 0;
-    } else {
-      const users = readLocalJSON(USERS_FILE);
-      const originalLength = users.length;
-      const filtered = users.filter((u) => u.userId !== userId);
-      writeLocalJSON(USERS_FILE, filtered);
-      return filtered.length < originalLength;
-    }
+    const result = await (UserModel as any).deleteOne({ userId });
+    return result.deletedCount > 0;
   }
 }

@@ -16,9 +16,9 @@
       "allowedGrades": [],
       "allowedSubjects": []
     },
-    "passwordHash": "$2b$10$m82W5afzWVM1iwyDhBzEruanKirqoqHysOO9PojrWxLYdPXH3X6dm",
-    "createdAt": "2026-07-04T10:38:21.327Z",
-    "updatedAt": "2026-07-04T10:38:21.327Z"
+    "passwordHash": "$2b$10$DogHRNJdBI4BM1IehI/YQuwS0mdoH6oKKnIu7lTsyJ1rYcv1IXPa.",
+    "createdAt": "2026-07-04T12:37:01.213Z",
+    "updatedAt": "2026-07-04T12:37:01.213Z"
   },
   {
     "userId": "demo-admin",
@@ -37,9 +37,9 @@
       "allowedGrades": [],
       "allowedSubjects": []
     },
-    "passwordHash": "$2b$10$/5AHvkLeI28tMANmT7cRDO9mIzt0llg7JMsoDkL.w/PiYZAhit3Ea",
-    "createdAt": "2026-07-04T10:38:21.410Z",
-    "updatedAt": "2026-07-04T10:38:21.410Z"
+    "passwordHash": "$2b$10$dLP8DXPlDKbpyQiwMk/f0uZ6fAF46gLho.LwSrjGPSLX0jqqIH8rC",
+    "createdAt": "2026-07-04T12:37:01.285Z",
+    "updatedAt": "2026-07-04T12:37:01.285Z"
   },
   {
     "userId": "demo-student",
@@ -61,9 +61,9 @@
       ],
       "allowedSubjects": []
     },
-    "passwordHash": "$2b$10$yXGyak8SZ1ZW4sm0duczKuEi9B5g/sccKzm8tMvSgBRyTmMxlDloG",
-    "createdAt": "2026-07-04T10:38:21.502Z",
-    "updatedAt": "2026-07-04T10:38:21.502Z"
+    "passwordHash": "$2b$10$Z7mlfl6xy/jH3cMLFn3Rr.HQR7kHq9D6yEh3ulhPmqDCVj4Gkhcdq",
+    "createdAt": "2026-07-04T12:37:01.355Z",
+    "updatedAt": "2026-07-04T12:37:01.355Z"
   },
   {
     "userId": "demo-teacher",
@@ -85,8 +85,8 @@
         "Mathematics"
       ]
     },
-    "passwordHash": "$2b$10$MnttH1Br5asN3AsBg8d9eeCF/Kdpr.8ljBhQQdqDHkrjFoRIdao0.",
-    "createdAt": "2026-07-04T10:38:21.591Z",
-    "updatedAt": "2026-07-04T10:38:21.591Z"
+    "passwordHash": "$2b$10$ZfOX3xFF5LiSG9hZLcEs/uI1r2aaunLlXMFfJ/4D8.qlnWYQywJIa",
+    "createdAt": "2026-07-04T12:37:01.423Z",
+    "updatedAt": "2026-07-04T12:37:01.423Z"
   }
 ]

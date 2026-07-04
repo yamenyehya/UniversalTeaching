@@ -1,318 +1,99 @@
 import mongoose from "mongoose";
-import fs from "fs";
-import path from "path";
 import bcrypt from "bcryptjs";
 
-// Paths for the fallback JSON database files
-const DATA_DIR = path.join(process.cwd(), "backend", "data");
-const SCHOOLS_FILE = path.join(DATA_DIR, "schools.json");
-const USERS_FILE = path.join(DATA_DIR, "users.json");
-const FILES_FILE = path.join(DATA_DIR, "files.json");
+/**
+ * Production data layer.
+ * MongoDB is the ONLY data source. There is no JSON/local-file fallback.
+ * The server refuses to start if it cannot establish a MongoDB connection
+ * or if required environment variables are missing.
+ */
 
-// Ensure data directory and files exist
-function ensureDirAndFiles() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+const REQUIRED_ENV_VARS = ["MONGODB_URI", "JWT_SECRET"] as const;
+
+export function validateEnv(): void {
+  const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key] || !process.env[key]!.trim());
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variable(s): ${missing.join(", ")}. ` +
+        `Refusing to start without them (no fallback mode is available).`
+    );
   }
-  if (!fs.existsSync(SCHOOLS_FILE)) {
-    fs.writeFileSync(SCHOOLS_FILE, JSON.stringify([], null, 2));
-  }
-  if (!fs.existsSync(USERS_FILE)) {
-    fs.writeFileSync(USERS_FILE, JSON.stringify([], null, 2));
-  }
-  if (!fs.existsSync(FILES_FILE)) {
-    fs.writeFileSync(FILES_FILE, JSON.stringify([], null, 2));
+
+  if (process.env.JWT_SECRET === "PLATFORM_SUPER_SECRET_JWT_KEY") {
+    throw new Error(
+      "JWT_SECRET is set to the insecure default placeholder. Set a strong, unique secret before starting the server."
+    );
   }
 }
 
-// Global flag to track if we are using MongoDB or Fallback
-let isConnectedToMongo = false;
+export async function connectDB(): Promise<void> {
+  validateEnv();
 
-export async function connectDB(): Promise<boolean> {
-  ensureDirAndFiles();
-  const uri = process.env.MONGODB_URI;
+  const uri = process.env.MONGODB_URI as string;
 
-  if (!uri) {
-    console.warn("⚠️ MONGODB_URI not found in environment. Falling back to robust local JSON Database.");
-    isConnectedToMongo = false;
-    await seedDemoAccountsLocal();
-    return false;
-  }
+  await mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 8000,
+  });
 
-  try {
-    // 5-second timeout so it doesn't block the server from starting if connection fails
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
-    });
-    console.log("🚀 Connected to MongoDB successfully via Mongoose!");
-    isConnectedToMongo = true;
-    await seedDemoAccountsMongo();
-    return true;
-  } catch (error) {
-    console.error("❌ MongoDB connection failed:", (error as Error).message);
-    console.warn("⚠️ Falling back to local JSON Database for live demo purposes.");
-    isConnectedToMongo = false;
-    await seedDemoAccountsLocal();
-    return false;
-  }
+  console.log("🚀 Connected to MongoDB successfully via Mongoose!");
+
+  await seedOwnerAccount();
 }
 
 export function isUsingMongo(): boolean {
-  return isConnectedToMongo && mongoose.connection.readyState === 1;
+  return mongoose.connection.readyState === 1;
 }
 
-// Fallback JSON-based Database helper functions
-export function readLocalJSON(filePath: string): any[] {
-  ensureDirAndFiles();
-  try {
-    const data = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(data);
-  } catch (err) {
-    console.error(`Error reading ${filePath}:`, err);
-    return [];
-  }
-}
+/**
+ * Creates exactly one Owner account on first boot, sourced from environment
+ * variables. No other accounts, schools, or demo data are ever auto-created.
+ *
+ * Required env vars: OWNER_NAME, OWNER_USERNAME, OWNER_EMAIL, OWNER_PASSWORD
+ * If any are missing, owner seeding is skipped (an existing owner is left
+ * untouched, and a fresh system will have no login until an owner is
+ * provisioned via these variables and a restart).
+ */
+async function seedOwnerAccount(): Promise<void> {
+  const UserModel = mongoose.model("User");
 
-export function writeLocalJSON(filePath: string, data: any[]): void {
-  ensureDirAndFiles();
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
-  } catch (err) {
-    console.error(`Error writing to ${filePath}:`, err);
-  }
-}
-
-// Auto-seed required demo accounts on Local JSON Store
-async function seedDemoAccountsLocal() {
-  const users = readLocalJSON(USERS_FILE);
-  const schools = readLocalJSON(SCHOOLS_FILE);
-
-  // Check if default school exists
-  const demoSchoolId = "demo-school";
-  if (!schools.some((s) => s.schoolId === demoSchoolId)) {
-    schools.push({
-      schoolId: demoSchoolId,
-      schoolName: "Demo International School",
-      settings: { theme: "light" },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    writeLocalJSON(SCHOOLS_FILE, schools);
+  const existingOwner = await (UserModel as any).findOne({ role: "owner" });
+  if (existingOwner) {
+    return;
   }
 
-  // Seed user accounts if they don't exist
-  const demoAccounts = [
-    {
-      userId: "owner-yamenyehya",
-      schoolId: "global-platform",
-      role: "owner" as const,
-      name: "Yamen Yehya",
-      username: "yamenyehya",
-      email: "yamenyehya608@gmail.com",
-      password: "yamen1234*",
-      profileImage: "/public/defaults/dpfp.png",
-      permissions: {
-        canReadFiles: true,
-        canUploadFiles: true,
-        canDeleteFiles: true,
-        canEditFiles: true,
-        canManageUsers: true,
-        allowedGrades: [],
-        allowedSubjects: [],
-      },
+  const { OWNER_NAME, OWNER_USERNAME, OWNER_EMAIL, OWNER_PASSWORD } = process.env;
+
+  if (!OWNER_NAME || !OWNER_USERNAME || !OWNER_EMAIL || !OWNER_PASSWORD) {
+    console.warn(
+      "⚠️ No Owner account exists yet, and OWNER_NAME / OWNER_USERNAME / OWNER_EMAIL / OWNER_PASSWORD " +
+        "are not fully set. Skipping owner creation — set these environment variables and restart " +
+        "the server to provision the platform Owner."
+    );
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(OWNER_PASSWORD, 10);
+  const userId = "owner_" + Math.random().toString(36).substring(2, 10);
+
+  await (UserModel as any).create({
+    userId,
+    schoolId: "global-platform",
+    role: "owner",
+    name: OWNER_NAME,
+    username: OWNER_USERNAME,
+    email: OWNER_EMAIL,
+    passwordHash,
+    profileImage: "/public/defaults/dpfp.png",
+    permissions: {
+      canReadFiles: true,
+      canUploadFiles: true,
+      canDeleteFiles: true,
+      canEditFiles: true,
+      canManageUsers: true,
+      allowedGrades: [],
+      allowedSubjects: [],
     },
-    {
-      userId: "demo-admin",
-      schoolId: demoSchoolId,
-      role: "admin" as const,
-      name: "System Administrator",
-      username: "mainadmin",
-      email: "admin@demoschool.edu",
-      password: "1234",
-      profileImage: "/public/defaults/dpfp.png",
-      permissions: {
-        canReadFiles: true,
-        canUploadFiles: true,
-        canDeleteFiles: true,
-        canEditFiles: true,
-        canManageUsers: true,
-        allowedGrades: [],
-        allowedSubjects: [],
-      },
-    },
-    {
-      userId: "demo-student",
-      schoolId: demoSchoolId,
-      role: "student" as const,
-      name: "John Student",
-      username: "studentview",
-      email: "student@demoschool.edu",
-      password: "1234",
-      grade: "Grade 10",
-      profileImage: "/public/defaults/dpfp.png",
-      permissions: {
-        canReadFiles: true,
-        canUploadFiles: false,
-        canDeleteFiles: false,
-        canEditFiles: false,
-        canManageUsers: false,
-        allowedGrades: ["Grade 10"],
-        allowedSubjects: [],
-      },
-    },
-    {
-      userId: "demo-teacher",
-      schoolId: demoSchoolId,
-      role: "teacher" as const,
-      name: "Sarah Teacher",
-      username: "teacherview",
-      email: "teacher@demoschool.edu",
-      password: "1234",
-      subject: "Mathematics",
-      profileImage: "/public/defaults/dpfp.png",
-      permissions: {
-        canReadFiles: true,
-        canUploadFiles: true,
-        canDeleteFiles: true,
-        canEditFiles: true,
-        canManageUsers: false,
-        allowedGrades: [],
-        allowedSubjects: ["Mathematics"],
-      },
-    },
-  ];
+  });
 
-  let modified = false;
-  for (const account of demoAccounts) {
-    if (!users.some((u) => u.username === account.username)) {
-      const passwordHash = await bcrypt.hash(account.password, 10);
-      const { password, ...userData } = account;
-      users.push({
-        ...userData,
-        passwordHash,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      modified = true;
-    }
-  }
-
-  if (modified) {
-    writeLocalJSON(USERS_FILE, users);
-    console.log("✅ Seeded required demo accounts in local JSON Store.");
-  }
-}
-
-// Auto-seed required demo accounts on MongoDB
-async function seedDemoAccountsMongo() {
-  try {
-    const School = mongoose.model("School");
-    const User = mongoose.model("User");
-
-    const demoSchoolId = "demo-school";
-    let school = await School.findOne({ schoolId: demoSchoolId });
-    if (!school) {
-      school = await School.create({
-        schoolId: demoSchoolId,
-        schoolName: "Demo International School",
-        settings: { theme: "light" },
-      });
-    }
-
-    const demoAccounts = [
-      {
-        userId: "owner-yamenyehya",
-        schoolId: "global-platform",
-        role: "owner",
-        name: "Yamen Yehya",
-        username: "yamenyehya",
-        email: "yamenyehya608@gmail.com",
-        password: "yamen1234*",
-        profileImage: "/public/defaults/dpfp.png",
-        permissions: {
-          canReadFiles: true,
-          canUploadFiles: true,
-          canDeleteFiles: true,
-          canEditFiles: true,
-          canManageUsers: true,
-          allowedGrades: [],
-          allowedSubjects: [],
-        },
-      },
-      {
-        userId: "demo-admin",
-        schoolId: demoSchoolId,
-        role: "admin",
-        name: "System Administrator",
-        username: "mainadmin",
-        email: "admin@demoschool.edu",
-        password: "1234",
-        profileImage: "/public/defaults/dpfp.png",
-        permissions: {
-          canReadFiles: true,
-          canUploadFiles: true,
-          canDeleteFiles: true,
-          canEditFiles: true,
-          canManageUsers: true,
-          allowedGrades: [],
-          allowedSubjects: [],
-        },
-      },
-      {
-        userId: "demo-student",
-        schoolId: demoSchoolId,
-        role: "student",
-        name: "John Student",
-        username: "studentview",
-        email: "student@demoschool.edu",
-        password: "1234",
-        grade: "Grade 10",
-        profileImage: "/public/defaults/dpfp.png",
-        permissions: {
-          canReadFiles: true,
-          canUploadFiles: false,
-          canDeleteFiles: false,
-          canEditFiles: false,
-          canManageUsers: false,
-          allowedGrades: ["Grade 10"],
-          allowedSubjects: [],
-        },
-      },
-      {
-        userId: "demo-teacher",
-        schoolId: demoSchoolId,
-        role: "teacher",
-        name: "Sarah Teacher",
-        username: "teacherview",
-        email: "teacher@demoschool.edu",
-        password: "1234",
-        subject: "Mathematics",
-        profileImage: "/public/defaults/dpfp.png",
-        permissions: {
-          canReadFiles: true,
-          canUploadFiles: true,
-          canDeleteFiles: true,
-          canEditFiles: true,
-          canManageUsers: false,
-          allowedGrades: [],
-          allowedSubjects: ["Mathematics"],
-        },
-      },
-    ];
-
-    for (const account of demoAccounts) {
-      const existingUser = await User.findOne({ username: account.username });
-      if (!existingUser) {
-        const passwordHash = await bcrypt.hash(account.password, 10);
-        const { password, ...userData } = account;
-        await User.create({
-          ...userData,
-          passwordHash,
-        });
-      }
-    }
-    console.log("✅ Seeded required demo accounts in MongoDB.");
-  } catch (err) {
-    console.error("❌ MongoDB seeding error:", err);
-  }
+  console.log(`✅ Owner account provisioned for username '${OWNER_USERNAME}'.`);
 }

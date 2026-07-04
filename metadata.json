@@ -2,5 +2,5 @@
   "name": "Universal Teaching Hub",
   "description": "Universal Teaching Hub by NuxWeb - A production-level SaaS multi-tenant education platform with secure multi-school isolation, owner administration, school management, and student portal.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

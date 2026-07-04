@@ -11,9 +11,10 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
-  // Initialize DB Connection (auto-fallback to local JSON files if MongoDB is not present)
+  // Initialize DB Connection. MongoDB is the only supported data source —
+  // if this fails, the server must not start (no JSON fallback exists).
   await connectDB();
 
   // Middleware for parsing JSON and form-data
@@ -65,4 +66,5 @@ async function startServer() {
 
 startServer().catch((err) => {
   console.error("🔥 FAILED TO START SERVER:", err);
+  process.exit(1);
 });

@@ -33,8 +33,8 @@ export class FileController {
           return res.status(403).json({ error: "Access denied. Only staff can upload materials." });
         }
 
-        // Restrict to same school unless global admin or platform owner
-        if (req.user.role !== "owner" && req.user.role !== "admin" && req.user.schoolId !== schoolId) {
+        // Restrict to same school unless platform owner
+        if (req.user.role !== "owner" && req.user.schoolId !== schoolId) {
           if (req.file && req.file.path) fs.unlinkSync(req.file.path);
           return res.status(403).json({ error: "Access denied. You cannot upload files for another school." });
         }
@@ -87,7 +87,7 @@ export class FileController {
       if (!req.user) return res.status(401).json({ error: "Unauthorized." });
 
       // Cross-school security check (unless owner)
-      if (req.user.role !== "owner" && req.user.role !== "admin" && req.user.schoolId !== schoolId) {
+      if (req.user.role !== "owner" && req.user.schoolId !== schoolId) {
         return res.status(403).json({ error: "Access denied. School data isolated." });
       }
 
