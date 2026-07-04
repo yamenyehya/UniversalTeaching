@@ -868,7 +868,7 @@ export default function App() {
             <Layers className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-lg font-extrabold tracking-tight">Universal Teaching Hub</h1>
+            <p className="text-lg font-extrabold tracking-tight leading-none">Universal Teaching Hub</p>
             <p className="text-[10px] text-slate-400 font-mono tracking-wider uppercase">Enterprise SaaS Platform • by NuxWeb</p>
           </div>
         </div>
