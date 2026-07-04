@@ -1,0 +1,92 @@
+[
+  {
+    "userId": "owner-yamenyehya",
+    "schoolId": "global-platform",
+    "role": "owner",
+    "name": "Yamen Yehya",
+    "username": "yamenyehya",
+    "email": "yamenyehya608@gmail.com",
+    "profileImage": "/public/defaults/dpfp.png",
+    "permissions": {
+      "canReadFiles": true,
+      "canUploadFiles": true,
+      "canDeleteFiles": true,
+      "canEditFiles": true,
+      "canManageUsers": true,
+      "allowedGrades": [],
+      "allowedSubjects": []
+    },
+    "passwordHash": "$2b$10$m82W5afzWVM1iwyDhBzEruanKirqoqHysOO9PojrWxLYdPXH3X6dm",
+    "createdAt": "2026-07-04T10:38:21.327Z",
+    "updatedAt": "2026-07-04T10:38:21.327Z"
+  },
+  {
+    "userId": "demo-admin",
+    "schoolId": "demo-school",
+    "role": "admin",
+    "name": "System Administrator",
+    "username": "mainadmin",
+    "email": "admin@demoschool.edu",
+    "profileImage": "/public/defaults/dpfp.png",
+    "permissions": {
+      "canReadFiles": true,
+      "canUploadFiles": true,
+      "canDeleteFiles": true,
+      "canEditFiles": true,
+      "canManageUsers": true,
+      "allowedGrades": [],
+      "allowedSubjects": []
+    },
+    "passwordHash": "$2b$10$/5AHvkLeI28tMANmT7cRDO9mIzt0llg7JMsoDkL.w/PiYZAhit3Ea",
+    "createdAt": "2026-07-04T10:38:21.410Z",
+    "updatedAt": "2026-07-04T10:38:21.410Z"
+  },
+  {
+    "userId": "demo-student",
+    "schoolId": "demo-school",
+    "role": "student",
+    "name": "John Student",
+    "username": "studentview",
+    "email": "student@demoschool.edu",
+    "grade": "Grade 10",
+    "profileImage": "/public/defaults/dpfp.png",
+    "permissions": {
+      "canReadFiles": true,
+      "canUploadFiles": false,
+      "canDeleteFiles": false,
+      "canEditFiles": false,
+      "canManageUsers": false,
+      "allowedGrades": [
+        "Grade 10"
+      ],
+      "allowedSubjects": []
+    },
+    "passwordHash": "$2b$10$yXGyak8SZ1ZW4sm0duczKuEi9B5g/sccKzm8tMvSgBRyTmMxlDloG",
+    "createdAt": "2026-07-04T10:38:21.502Z",
+    "updatedAt": "2026-07-04T10:38:21.502Z"
+  },
+  {
+    "userId": "demo-teacher",
+    "schoolId": "demo-school",
+    "role": "teacher",
+    "name": "Sarah Teacher",
+    "username": "teacherview",
+    "email": "teacher@demoschool.edu",
+    "subject": "Mathematics",
+    "profileImage": "/public/defaults/dpfp.png",
+    "permissions": {
+      "canReadFiles": true,
+      "canUploadFiles": true,
+      "canDeleteFiles": true,
+      "canEditFiles": true,
+      "canManageUsers": false,
+      "allowedGrades": [],
+      "allowedSubjects": [
+        "Mathematics"
+      ]
+    },
+    "passwordHash": "$2b$10$MnttH1Br5asN3AsBg8d9eeCF/Kdpr.8ljBhQQdqDHkrjFoRIdao0.",
+    "createdAt": "2026-07-04T10:38:21.591Z",
+    "updatedAt": "2026-07-04T10:38:21.591Z"
+  }
+]

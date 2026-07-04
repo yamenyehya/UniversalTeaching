@@ -1,0 +1,11 @@
+[
+  {
+    "schoolId": "demo-school",
+    "schoolName": "Demo International School",
+    "settings": {
+      "theme": "light"
+    },
+    "createdAt": "2026-07-04T10:38:21.220Z",
+    "updatedAt": "2026-07-04T10:38:21.221Z"
+  }
+]
